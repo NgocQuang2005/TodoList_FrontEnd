@@ -4,7 +4,8 @@ import TodoList from "@/pages/TodoList.vue";
 import MainLayout from "@/pages/MainLayout.vue";
 import { createRouter, createWebHistory } from "vue-router";
 import ForgotPassword from "@/pages/ForgotPassword.vue";
-
+import Profile from "@/pages/Profile.vue";
+import ChangePassword from "@/pages/ChangePassword.vue";
 const routes = [
   // sử dụng: meta: { requiresAuth: false }, ==> Route này bắt buộc login
   {
@@ -25,6 +26,7 @@ const routes = [
     component: ForgotPassword,
     meta: { requiresAuth: false },
   },
+
   {
     path: "/",
     component: MainLayout, // layout chính
@@ -39,10 +41,19 @@ const routes = [
         name: "Todos",
         component: TodoList,
       },
-      // bạn có thể thêm các trang khác cũng dùng layout này
+      {
+        path: "profile",
+        name: "Profile",
+        component: Profile,
+      },
+      {
+        path: "change-password",
+        name: "ChangePassword",
+        component: ChangePassword,
+      },
     ],
   },
-  // default router
+
   {
     path: "/:pathMatch(.*)*",
     redirect: "/login",

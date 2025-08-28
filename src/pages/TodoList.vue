@@ -1,84 +1,314 @@
 <template>
-  <div class="max-w-2xl p-5 mx-auto">
+  <div class="max-w-4xl p-5 mx-auto">
     <h2 class="mb-5 text-2xl font-bold">Todo List</h2>
 
-    <!-- Form thêm Todo -->
-    <div class="flex gap-2 mb-3">
-      <InputText
-        v-model="newTitle"
-        placeholder="Nhập tiêu đề công việc"
-        @keyup.enter="onAddTodo"
-        class="flex-1"
-      />
-      <Button
-        label="Thêm"
-        icon="pi pi-plus"
-        class="p-button-success"
-        @click="onAddTodo"
-      />
-    </div>
-    <small v-if="errors.title" class="p-error">{{ errors.title }}</small>
-    <!-- Danh sách Todo -->
-    <ul class="mt-4 p-list">
-      <TodoItem
-        v-for="todo in todos"
-        :key="todo.id"
-        :todo="todo"
-        @update="toggleCompleted"
-        @delete="onDelete"
-        @edit="startEdit"
-      />
-    </ul>
+    <!-- Nút thêm -->
+    <Button
+      label="Thêm Todo"
+      icon="pi pi-plus"
+      class="p-button-success mb-4"
+      @click="openAddDialog"
+    />
 
-    <!-- Dialog sửa Todo -->
-    <Dialog
-      header="Sửa công việc"
-      :visible="editingTodo !== null"
-      :modal="true"
-      :closable="false"
-    >
-      <div class="p-field">
-        <InputText v-model="editingTitle" @keyup.enter="onUpdateTodo" />
-        <small v-if="errors.title" class="p-error">{{ errors.title }}</small>
+    <!-- Bộ lọc tìm kiếm - Compact Design -->
+    <div class="bg-white p-4 mb-4 rounded-lg shadow-sm border">
+      <div class="flex flex-wrap items-end gap-3">
+        <!-- Tìm kiếm -->
+        <div class="flex-1 min-w-[200px]">
+          <label class="block text-sm font-medium mb-1">Tìm kiếm</label>
+          <InputText 
+            v-model="searchFilters.title" 
+            placeholder="Nhập tiêu đề..."
+            class="w-full"
+          />
+        </div>
+
+        <!-- Trạng thái -->
+        <div class="w-40">
+          <label class="block text-sm font-medium mb-1">Trạng thái</label>
+          <Dropdown
+            v-model="searchFilters.status"
+            :options="statusOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Tất cả"
+            class="w-full"
+          />
+        </div>
+
+        <!-- Ưu tiên -->
+        <div class="w-32">
+          <label class="block text-sm font-medium mb-1">Ưu tiên</label>
+          <Dropdown
+            v-model="searchFilters.priority"
+            :options="priorityFilterOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Tất cả"
+            class="w-full"
+          />
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex gap-2">
+          <Button
+            icon="pi pi-search"
+            class="p-button-primary"
+            @click="applyFilters"
+            v-tooltip.top="'Tìm kiếm'"
+          />
+          <Button
+            icon="pi pi-refresh"
+            class="p-button-secondary"
+            @click="resetFilters"
+            v-tooltip.top="'Làm mới'"
+          />
+        </div>
       </div>
-      <div class="gap-2 mt-3 p-d-flex p-jc-end">
-        <Button label="Hủy" class="p-button-secondary" @click="cancelEdit" />
-        <Button label="Lưu" class="p-button-success" @click="onUpdateTodo" />
+
+      <!-- Active Filters Tags -->
+      <div v-if="hasActiveFilters" class="flex flex-wrap gap-2 mt-3 pt-3 border-t">
+        <span class="text-xs text-gray-500">Đang lọc:</span>
+        <span v-if="appliedFilters.title" class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+          "{{ appliedFilters.title }}"
+          <button @click="clearFilter('title')" class="ml-1 hover:text-blue-600">
+            <i class="pi pi-times text-xs"></i>
+          </button>
+        </span>
+        <span v-if="appliedFilters.status !== null" class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+          {{ getStatusLabel(appliedFilters.status) }}
+          <button @click="clearFilter('status')" class="ml-1 hover:text-green-600">
+            <i class="pi pi-times text-xs"></i>
+          </button>
+        </span>
+        <span v-if="appliedFilters.priority !== null" class="inline-flex items-center px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+          {{ getPriorityLabel(appliedFilters.priority) }}
+          <button @click="clearFilter('priority')" class="ml-1 hover:text-orange-600">
+            <i class="pi pi-times text-xs"></i>
+          </button>
+        </span>
+      </div>
+    </div>
+
+    <!-- Bảng dữ liệu -->
+    <div v-if="filteredTodos.length > 0">
+      <DataTable
+        :value="filteredTodos"
+        :paginator="true"
+        :rows="5"
+        :rowsPerPageOptions="[5, 10, 20]"
+        class="p-datatable-striped"
+        responsiveLayout="scroll"
+      >
+        <Column header="Trạng thái">
+          <template #body="slotProps">
+            <Checkbox
+              v-model="slotProps.data.is_completed"
+              binary
+              @change="toggleCompleted(slotProps.data)"
+            />
+          </template>
+        </Column>
+        <Column field="title" header="Tiêu đề" />
+        <Column field="description" header="Mô tả" />
+        <Column field="priority" header="Ưu tiên">
+          <template #body="slotProps">
+            <span :class="getPriorityClass(slotProps.data.priority)">
+              {{ getPriorityLabel(slotProps.data.priority) }}
+            </span>
+          </template>
+        </Column>
+        <Column field="deadline" header="Thời hạn">
+          <template #body="slotProps">
+            <span>{{ formatDate(slotProps.data.deadline) }}</span>
+          </template>
+        </Column>
+        <Column header="Hành động">
+          <template #body="slotProps">
+            <Button
+              icon="pi pi-pencil"
+              class="p-button-warning p-button-text"
+              @click="startEdit(slotProps.data)"
+            />
+            <Button
+              icon="pi pi-trash"
+              class="p-button-danger p-button-text"
+              @click="onDelete(slotProps.data.id)"
+            />
+          </template>
+        </Column>
+      </DataTable>
+    </div>
+
+    <div v-else-if="hasActiveFilters" class="text-center py-8">
+      <i class="pi pi-search text-4xl text-gray-400 mb-4"></i>
+      <p class="text-lg text-gray-600">Không tìm thấy kết quả phù hợp</p>
+      <Button label="Reset bộ lọc" class="p-button-link mt-2" @click="resetFilters" />
+    </div>
+
+    <div v-else class="text-center py-8">
+      <i class="pi pi-inbox text-4xl text-gray-400 mb-4"></i>
+      <p class="text-lg text-gray-600">Chưa có dữ liệu todo, hãy thêm mới!</p>
+    </div>
+
+    <!-- Dialog thêm/sửa -->
+    <Dialog
+      :header="editingTodo ? 'Sửa Todo' : 'Thêm Todo'"
+      v-model:visible="showDialog"
+      modal
+      :closable="false"
+      :style="{ width: '600px' }"
+    >
+      <div class="flex flex-col gap-5">
+        <div class="flex flex-col gap-2">
+          <label class="font-medium">Tiêu đề</label>
+          <InputText v-model="form.title" class="w-full" />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="font-medium">Mô tả</label>
+          <Textarea
+            v-model="form.description"
+            class="w-full border-1 border-[#ccc] rounded-[7px] p-2"
+            rows="5"
+            autoResize
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="font-medium">Ưu tiên</label>
+          <Dropdown
+            v-model="form.priority"
+            :options="priorityOptions"
+            optionLabel="label"
+            optionValue="value"
+            class="w-full"
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="font-medium">Thời hạn</label>
+          <Calendar
+            v-model="form.deadline"
+            showIcon
+            class="w-full"
+            :minDate="new Date()"
+            :manualInput="false"
+            monthNavigator
+            yearNavigator
+            :yearRange="'2024:2035'"
+          />
+        </div>
+        <div class="flex justify-end gap-3 mt-4">
+          <Button label="Hủy" class="p-button-secondary" @click="cancelDialog" />
+          <Button label="Lưu" class="p-button-success" @click="saveTodo" />
+        </div>
       </div>
     </Dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useTodoStore } from "@/stores/todoStore";
 import { storeToRefs } from "pinia";
 
-// PrimeVue components
-import InputText from "primevue/inputtext";
-import Button from "primevue/button";
-import Dialog from "primevue/dialog";
-import TodoItem from "@/components/TodoItem.vue";
-import { validateTodo } from "@/validation/todoSchema";
-
 const todoStore = useTodoStore();
-const editingTitle = ref("");
-const newTitle = ref("");
+const { todos } = storeToRefs(todoStore);
+
+const showDialog = ref(false);
 const editingTodo = ref(null);
-const errors = ref({});
+const form = ref({
+  title: "",
+  description: "",
+  priority: "medium",
+  deadline: null,
+});
+
+const searchFilters = ref({
+  title: "",
+  status: null,
+  priority: null,
+});
+
+const appliedFilters = ref({
+  title: "",
+  status: null,
+  priority: null,
+});
+
+const priorityOptions = [
+  { label: "Dễ", value: "low" },
+  { label: "Vừa", value: "medium" },
+  { label: "Khó", value: "high" },
+];
+
+const statusOptions = [
+  { label: "Tất cả", value: null },
+  { label: "Hoàn thành", value: true },
+  { label: "Chưa hoàn thành", value: false },
+];
+
+const priorityFilterOptions = [
+  { label: "Tất cả", value: null },
+  ...priorityOptions
+];
+
+const filteredTodos = computed(() => {
+  let filtered = todos.value;
+  
+  if (appliedFilters.value.title?.trim()) {
+    filtered = filtered.filter(todo =>
+      todo.title.toLowerCase().includes(appliedFilters.value.title.toLowerCase())
+    );
+  }
+  
+  if (appliedFilters.value.status !== null) {
+    filtered = filtered.filter(todo => todo.is_completed === appliedFilters.value.status);
+  }
+  
+  if (appliedFilters.value.priority !== null) {
+    filtered = filtered.filter(todo => todo.priority === appliedFilters.value.priority);
+  }
+  
+  return filtered;
+});
+
+const hasActiveFilters = computed(() => 
+  appliedFilters.value.title !== "" ||
+  appliedFilters.value.status !== null ||
+  appliedFilters.value.priority !== null
+);
 
 onMounted(() => {
   todoStore.getTodos();
 });
 
-const { todos } = storeToRefs(todoStore);
+function openAddDialog() {
+  editingTodo.value = null;
+  form.value = { title: "", description: "", priority: "medium", deadline: null };
+  showDialog.value = true;
+}
 
-async function onAddTodo() {
-  errors.value = validateTodo(newTitle.value);
-  if (Object.keys(errors.value).length > 0) return;
+function startEdit(todo) {
+  editingTodo.value = todo;
+  form.value = { ...todo };
+  showDialog.value = true;
+}
 
-  await todoStore.addNewTodo({ title: newTitle.value });
-  newTitle.value = "";
+function cancelDialog() {
+  showDialog.value = false;
+}
+
+async function saveTodo() {
+  const payload = {
+    ...form.value,
+    deadline: form.value.deadline ? new Date(form.value.deadline).toISOString() : null,
+  };
+  
+  if (editingTodo.value) {
+    await todoStore.updateTodoItem(editingTodo.value.id, payload);
+  } else {
+    await todoStore.addNewTodo(payload);
+  }
+  showDialog.value = false;
 }
 
 async function onDelete(id) {
@@ -87,35 +317,57 @@ async function onDelete(id) {
   }
 }
 
-function startEdit(todo) {
-  editingTodo.value = { ...todo };
-  editingTitle.value = todo.title; // copy giá trị
-  errors.value = {};
-}
-
-async function onUpdateTodo() {
-  errors.value = validateTodo(editingTitle.value);
-  if (Object.keys(errors.value).length > 0) return;
-
-  await todoStore.updateTodoItem(editingTodo.value.id, {
-    // luôn gửi đủ dữ liệu
-    title: editingTitle.value, 
-    is_completed: editingTodo.value.is_completed 
-  });
-  editingTodo.value = null;
-  editingTitle.value = "";
-}
-
 async function toggleCompleted(todo) {
   await todoStore.updateTodoItem(todo.id, {
-    title: todo.title,           
-    is_completed: todo.is_completed 
+    ...todo,
+    is_completed: todo.is_completed,
   });
 }
-function cancelEdit() {
-  editingTodo.value = null;
-  editingTitle.value = "";
-  errors.value = {};
+
+function formatDate(date) {
+  if (!date) return "";
+  return new Date(date).toLocaleString("vi-VN", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
 }
 
+function applyFilters() {
+  appliedFilters.value = { ...searchFilters.value };
+}
+
+function resetFilters() {
+  searchFilters.value = { title: "", status: null, priority: null };
+  appliedFilters.value = { title: "", status: null, priority: null };
+}
+
+function clearFilter(type) {
+  searchFilters.value[type] = type === 'title' ? "" : null;
+  appliedFilters.value[type] = type === 'title' ? "" : null;
+}
+
+function getPriorityLabel(priority) {
+  return priorityOptions.find(opt => opt.value === priority)?.label || priority;
+}
+
+function getStatusLabel(status) {
+  return statusOptions.find(opt => opt.value === status)?.label || status;
+}
+
+function getPriorityClass(priority) {
+  const classes = {
+    low: 'text-green-600 font-medium',
+    medium: 'text-yellow-600 font-medium',
+    high: 'text-red-600 font-medium'
+  };
+  return classes[priority] || '';
+}
 </script>
+
+<style>
+.p-datatable-paginator-bottom {
+  display: flex;
+  justify-content: end;
+  align-items: center;
+}
+</style>

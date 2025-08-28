@@ -1,15 +1,25 @@
 import { createApp } from 'vue';
-import './main.css'
+import './main.css';
 import App from './App.vue';
 import router from './router';
 import { createPinia } from 'pinia';
+
+// PrimeVue
 import PrimeVue from 'primevue/config'; 
+import Aura from '@primevue/themes/aura';
+
+// Components PrimeVue
 import Button from 'primevue/button';
 import Card from "primevue/card";
 import InputText from "primevue/inputtext";
 import Password from "primevue/password";
-import Aura from '@primevue/themes/aura';
 import Dialog from 'primevue/dialog';
+import DataTable from "primevue/datatable";
+import Column from "primevue/column";
+import Checkbox from "primevue/checkbox";
+import Dropdown from "primevue/dropdown";
+import Calendar from "primevue/calendar";
+import Textarea from "primevue/textarea";
 // CSS
 import 'primeicons/primeicons.css'; // Icons
 import 'primeflex/primeflex.css';   // Layout utilities
@@ -23,9 +33,18 @@ app.use(PrimeVue, {
     preset: Aura,
   },
 });
+
+// Global components
 app.component('Button', Button);
 app.component("Card", Card);
 app.component("InputText", InputText);
 app.component("Password", Password);
 app.component("Dialog", Dialog);
+app.component("DataTable", DataTable);
+app.component("Column", Column);
+app.component("Checkbox", Checkbox);
+app.component("Dropdown", Dropdown);
+app.component("Calendar", Calendar);
+app.component("Textarea", Textarea);
+
 app.mount('#app');
