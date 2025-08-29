@@ -4,28 +4,49 @@
     v-if="displayMode === 'checkbox-only'"
     v-model="localTodo.is_completed"
     binary
+    :disabled="isOverdue"
+    :class="{ 'opacity-50 overdue-tooltip': isOverdue }"
     @change="onToggleCompleted"
   />
-  <span
+  <span 
     v-else-if="displayMode === 'title-only'"
-    :class="{ 'line-through text-gray-400': localTodo.is_completed }"
+    :class="{ 'opacity-50 overdue-tooltip': isOverdue }"
   >
     {{ localTodo.title }}
   </span>
   <span
     v-else-if="displayMode === 'priority-only'"
-    :class="getPriorityClass(localTodo.priority)"
+    :class="[getPriorityClass(localTodo.priority), { 'opacity-50 overdue-tooltip': isOverdue }]"
   >
     {{ getPriorityLabel(localTodo.priority, priorityOptions) }}
   </span>
-  <span v-else-if="displayMode === 'deadline-only'">
+  <span
+    v-else-if="displayMode === 'deadline-only'"
+    :class="{
+      'text-red-600 font-bold':
+        localTodo.deadline &&
+        new Date(localTodo.deadline) < new Date() &&
+        !localTodo.is_completed,
+      'opacity-50 overdue-tooltip': isOverdue
+    }"
+  >
     {{ formatDate(localTodo.deadline) }}
+    <i
+      v-if="
+        localTodo.deadline &&
+        new Date(localTodo.deadline) < new Date() &&
+        !localTodo.is_completed
+      "
+      class="pi pi-exclamation-triangle ml-1"
+    ></i>
   </span>
   <div v-else-if="displayMode === 'actions-only'" class="flex gap-2">
     <Button
       icon="pi pi-pencil"
       class="p-button-warning p-button-text"
+      :class="{ 'opacity-50 overdue-tooltip': isOverdue }"
       @click="onEdit"
+      :disabled="isOverdue"
     />
     <Button
       icon="pi pi-trash"
@@ -35,53 +56,11 @@
   </div>
 
   <!-- Full Mode (Default) -->
-  <li v-else class="flex items-center justify-between py-2 border-b">
-    <div class="flex items-center gap-2">
-      <Checkbox
-        v-model="localTodo.is_completed"
-        binary
-        @change="onToggleCompleted"
-      />
-      <div class="flex flex-col">
-        <span :class="{ 'line-through text-gray-400': localTodo.is_completed }">
-          {{ localTodo.title }}
-        </span>
-        <span v-if="localTodo.description" class="text-sm text-gray-600">
-          {{ localTodo.description }}
-        </span>
-      </div>
-    </div>
-
-    <div class="flex items-center gap-3">
-      <!-- Priority Badge -->
-      <span :class="getPriorityClass(localTodo.priority)">
-        {{ getPriorityLabel(localTodo.priority, priorityOptions) }}
-      </span>
-
-      <!-- Deadline -->
-      <span v-if="localTodo.deadline" class="text-sm text-gray-600">
-        {{ formatDate(localTodo.deadline) }}
-      </span>
-
-      <!-- Action Buttons -->
-      <div class="flex gap-2">
-        <Button
-          icon="pi pi-pencil"
-          class="p-button-warning p-button-text"
-          @click="onEdit"
-        />
-        <Button
-          icon="pi pi-trash"
-          class="p-button-danger p-button-text"
-          @click="onDelete"
-        />
-      </div>
-    </div>
-  </li>
+  <template v-else></template>
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import {
   getPriorityLabel,
   getPriorityClass,
@@ -95,7 +74,7 @@ const props = defineProps({
   },
   displayMode: {
     type: String,
-    default: "full", // 'checkbox-only', 'title-only', 'priority-only', 'deadline-only', 'actions-only', 'full'
+    default: "title-only", // 'checkbox-only', 'title-only', 'priority-only', 'deadline-only', 'actions-only'
   },
 });
 
@@ -117,11 +96,21 @@ watch(
   }
 );
 
+//deadline hết hạn
+const isOverdue = computed(() => {
+  return localTodo.value.deadline && new Date(localTodo.value.deadline) < new Date() ;
+});
+
 function onToggleCompleted() {
+  if (isOverdue.value) return; // Không cho phép thay đổi nếu hết hạn
   emit("update", localTodo.value);
 }
 
 function onEdit() {
+  if (isOverdue.value) {
+    alert("Công việc này đã hết hạn, không thể chỉnh sửa!");
+    return;
+  }
   emit("edit", localTodo.value);
 }
 
@@ -133,5 +122,39 @@ function onDelete() {
 <style scoped>
 .line-through {
   text-decoration: line-through;
+}
+
+/* Custom tooltip for overdue items */
+.overdue-tooltip {
+  position: relative;
+  cursor: not-allowed;
+}
+
+.overdue-tooltip:hover::after {
+  content: 'Todo đã hết hạn';
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.overdue-tooltip:hover::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #333;
+  z-index: 1000;
+  pointer-events: none;
 }
 </style>

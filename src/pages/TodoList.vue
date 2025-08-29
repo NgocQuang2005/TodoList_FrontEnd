@@ -240,6 +240,11 @@
             monthNavigator
             yearNavigator
             :yearRange="'2024:2035'"
+            showTime
+            hourFormat="24"
+            :stepHour="1"
+            :stepMinute="1"
+            :stepSecond="1"
           />
           <span v-if="formErrors.deadline" class="text-red-600 text-sm">
             {{ formErrors.deadline }}
@@ -301,6 +306,7 @@ const statusOptions = [
   { label: "Tất cả", value: null },
   { label: "Hoàn thành", value: true },
   { label: "Chưa hoàn thành", value: false },
+  { label: "Quá hạn", value: "overdue" },
 ];
 const priorityFilterOptions = [
   { label: "Tất cả", value: null },

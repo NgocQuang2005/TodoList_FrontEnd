@@ -14,9 +14,14 @@ export function useTodoFilter(todos) {
       );
     }
     if (appliedFilters.value.status !== null) {
-      filtered = filtered.filter(
-        (todo) => todo.is_completed === appliedFilters.value.status
-      );
+      filtered = filtered.filter((todo) => {
+        const isOverdue =
+          todo.deadline &&
+          new Date(todo.deadline) < new Date()
+
+        if (appliedFilters.value.status === "overdue") return isOverdue;
+        return todo.is_completed === appliedFilters.value.status;
+      });
     }
     if (appliedFilters.value.priority !== null) {
       filtered = filtered.filter(
