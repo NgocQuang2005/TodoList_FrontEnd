@@ -1,65 +1,100 @@
 <template>
-  <div class="max-w-xl  bg-white p-6 ">
-    <h2 class="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-2">
-      <i class="pi pi-user text-blue-500"></i>
-      Thông tin người dùng
-    </h2>
-
-    <div v-if="userStore.userInfo" class="space-y-3">
-      <p class="flex items-center gap-2">
-        <i class="pi pi-id-card text-gray-500"></i>
-        <span><strong>Tên đăng nhập:</strong> {{ userStore.userInfo.username }}</span>
-      </p>
-      <p class="flex items-center gap-2">
-        <i class="pi pi-envelope text-gray-500"></i>
-        <span><strong>Email:</strong> {{ userStore.userInfo.email }}</span>
-      </p>
-
-      <Button
-        label="Chỉnh sửa thông tin"
-        icon="pi pi-user-edit"
-        class="mt-5 p-button-info"
-        @click="openEditDialog"
-      />
+  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 p-6 relative">
+    <!-- Background -->
+    <div class="absolute inset-0 opacity-20">
+      <div 
+        class="w-full h-full bg-cover bg-center"
+        style="background-image: url('https://cdn-media.sforum.vn/storage/app/media/wp-content/uploads/2024/02/anh-thien-nhien-Thumbnail.jpg')"
+      ></div>
     </div>
 
-    <div v-else class="text-gray-500 italic">
-      Không có thông tin user.
+    <div class="relative max-w-lg mx-auto">
+      <!-- Profile Card -->
+      <div class="bg-white/90 backdrop-blur-lg rounded-2xl shadow-xl overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-center">
+          <div class="w-16 h-16 bg-white/20 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <i class="pi pi-user text-white text-2xl"></i>
+          </div>
+          <h2 class="text-2xl font-bold text-white">Thông tin người dùng</h2>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6">
+          <div v-if="userStore.userInfo" class="space-y-4">
+            <!-- User Info -->
+            <div class="space-y-3">
+              <div class="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
+                <i class="pi pi-id-card text-blue-500 text-lg"></i>
+                <div>
+                  <p class="text-sm text-gray-600">Tên đăng nhập</p>
+                  <p class="font-semibold">{{ userStore.userInfo.username }}</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center gap-3 p-3 bg-purple-50 rounded-xl">
+                <i class="pi pi-envelope text-purple-500 text-lg"></i>
+                <div>
+                  <p class="text-sm text-gray-600">Email</p>
+                  <p class="font-semibold">{{ userStore.userInfo.email }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Edit Button -->
+            <Button
+              label="Chỉnh sửa"
+              icon="pi pi-edit"
+              class="w-full mt-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 rounded-xl font-semibold"
+              @click="openEditDialog"
+            />
+          </div>
+
+          <div v-else class="text-center py-8 text-gray-500">
+            Không có thông tin user.
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Dialog chỉnh sửa -->
-    <Dialog
-      v-model:visible="showEdit"
-      header="Chỉnh sửa thông tin"
-      modal
-      :style="{ width: '32rem' }"
-    >
-      <form @submit.prevent="updateProfile" class="flex flex-col gap-5">
+    <!-- Edit Dialog -->
+    <Dialog v-model:visible="showEdit" header="Chỉnh sửa thông tin" modal :style="{ width: '28rem' }">
+      <form @submit.prevent="updateProfile" class="space-y-4">
+        <!-- Username -->
         <div>
-          <label class="block mb-1 text-sm font-medium text-gray-700">Họ tên</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Họ tên</label>
           <InputText
             v-model="editForm.username"
-            class="w-full"
+            class="w-full p-3 border border-gray-300 rounded-lg"
             placeholder="Nhập họ tên"
           />
         </div>
+
+        <!-- Email -->
         <div>
-          <label class="block mb-1 text-sm font-medium text-gray-700">Email</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
           <InputText
             v-model="editForm.email"
-            class="w-full opacity-80"
+            class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50"
+            readonly
           />
         </div>
-        <div class="flex justify-end gap-3 mt-6">
+
+        <!-- Buttons -->
+        <div class="flex gap-3 pt-4">
           <Button
             label="Hủy"
             icon="pi pi-times"
-            severity="secondary"
-            outlined
+            class="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 border-0 rounded-lg"
             @click="showEdit = false"
             type="button"
           />
-          <Button label="Lưu" icon="pi pi-check" severity="success" type="submit" />
+          <Button 
+            label="Lưu" 
+            icon="pi pi-check" 
+            class="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white border-0 rounded-lg"
+            type="submit" 
+          />
         </div>
       </form>
     </Dialog>
@@ -69,10 +104,6 @@
 <script setup>
 import { ref } from "vue";
 import { useUserStore } from "@/stores/userStore";
-import Button from "primevue/button";
-import Dialog from "primevue/dialog";
-import InputText from "primevue/inputtext";
-
 const userStore = useUserStore();
 const showEdit = ref(false);
 
@@ -103,3 +134,9 @@ async function updateProfile() {
   }
 }
 </script>
+
+<style scoped>
+.backdrop-blur-lg {
+  backdrop-filter: blur(12px);
+}
+</style>

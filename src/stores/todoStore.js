@@ -14,22 +14,13 @@ export const useTodoStore = defineStore("todo", {
     loading: false,
     error: null,
   }),
-  getters: {
-    completedTodos: (state) => state.todos.filter((t) => t.is_completed),
-    pendingTodos: (state) => state.todos.filter((t) => !t.is_completed),
-    sortedByDeadline: (state) =>
-      [...state.todos].sort(
-        (a, b) => new Date(a.deadline) - new Date(b.deadline)
-      ),
-  },
-
   actions: {
     async getTodos() {
       this.loading = true;
       this.error = null;
       try {
         const res = await fetchTodos();
-        this.todos = res.data; 
+        this.todos = res.data;
       } catch (err) {
         this.error = err.response?.data?.message || "Lỗi khi tải todos";
       } finally {
@@ -42,7 +33,7 @@ export const useTodoStore = defineStore("todo", {
       const errors = validateTodo(todo);
       if (Object.keys(errors).length > 0) {
         this.error = errors;
-        return; // dừng lại, không gọi API
+        return; 
       }
       try {
         const res = await addTodo(todo);
@@ -51,33 +42,18 @@ export const useTodoStore = defineStore("todo", {
         this.error = err.response?.data?.message || "Không thể thêm todo";
       }
     },
-
     async updateTodoItem(id, todo) {
       this.error = null;
       try {
         const res = await updateTodo(id, todo);
         const index = this.todos.findIndex((t) => t.id === id);
         if (index !== -1) {
-          this.todos[index] = { ...this.todos[index], ...res.data }; // merge thay vì overwrite
+          this.todos[index] = { ...this.todos[index], ...res.data }; 
         }
       } catch (err) {
         this.error = err.response?.data?.message || "Không thể cập nhật todo";
       }
     },
-
-    async toggleCompleted(id, completed) {
-      try {
-        const res = await updateTodo(id, { is_completed: completed });
-        const index = this.todos.findIndex((t) => t.id === id);
-        if (index !== -1) {
-          this.todos[index] = { ...this.todos[index], ...res.data };
-        }
-      } catch (err) {
-        this.error =
-          err.response?.data?.message || "Không thể đổi trạng thái todo";
-      }
-    },
-
     async deleteTodoItem(id) {
       this.error = null;
       try {

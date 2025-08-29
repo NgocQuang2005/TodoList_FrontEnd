@@ -68,6 +68,7 @@
               placeholder="Nhập mật khẩu"
               class="block w-full mt-2 rounded-md bg-white/5 text-base text-gray-900 outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6"
               toggleMask
+              :feedback="false"
             />
 
             <small v-if="errors.password" class="text-red-500">

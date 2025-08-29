@@ -20,6 +20,8 @@ import Checkbox from "primevue/checkbox";
 import Dropdown from "primevue/dropdown";
 import Calendar from "primevue/calendar";
 import Textarea from "primevue/textarea";
+import Avatar from "primevue/avatar";
+import Tooltip from 'primevue/tooltip';
 // CSS
 import 'primeicons/primeicons.css'; // Icons
 import 'primeflex/primeflex.css';   // Layout utilities
@@ -46,5 +48,7 @@ app.component("Checkbox", Checkbox);
 app.component("Dropdown", Dropdown);
 app.component("Calendar", Calendar);
 app.component("Textarea", Textarea);
+app.component("Avatar", Avatar);
+app.component("Tooltip", Tooltip);
 
 app.mount('#app');

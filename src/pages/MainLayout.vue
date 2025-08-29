@@ -138,8 +138,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
-import Button from "primevue/button";
-import Avatar from "primevue/avatar";
 import { logout } from "@/services/authService";
 import { useUserStore } from "@/stores/userStore";
 

@@ -5,7 +5,9 @@ export function validateTodo({ title, description, priority, deadline }) {
   } else if (title.length > 255) {
     errors.title = "Tiêu đề không được quá 255 kí tự";
   }
-  if (description && description.length < 4) {
+  if (!description || description.trim() === "") {
+    errors.description = "Mô tả không được để trống";
+  } else if (description.length < 4) {
     errors.description = "Mô tả phải có ít nhất 4 kí tự";
   }
   if (priority && !["low", "medium", "high"].includes(priority)) {
