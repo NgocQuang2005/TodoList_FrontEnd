@@ -7,10 +7,6 @@ export function getStatusLabel(status, options) {
   return options.find((opt) => opt.value === status)?.label || status;
 }
 // ✅ Trả về class CSS tương ứng với priority
-//   - low  → chữ xanh lá
-//   - medium → chữ vàng
-//   - high → chữ đỏ
-//   - dùng để highlight mức ưu tiên trong bảng todo
 export function getPriorityClass(priority) {
   const classes = {
     low: "text-green-600 font-medium",

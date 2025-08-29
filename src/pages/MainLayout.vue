@@ -152,10 +152,10 @@ const email = ref(""); // thay cho hardcode
 function toggleUserMenu() {
   showUserMenu.value = !showUserMenu.value;
 }
-
-function getUserInitials(name) {
-  return name
-    ? name
+//fake avt là chữ cái đầu tiên
+function getUserInitials(username) {
+  return username
+    ? username
         .split(" ")
         .map((word) => word.charAt(0))
         .join("")
