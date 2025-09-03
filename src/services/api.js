@@ -1,32 +1,57 @@
 import router from "@/router";
 import axios from "axios";
+import { API_CONFIG, STORAGE_KEYS, ERROR_MESSAGES } from "@/constants";
+import { handleApiError, logError } from "@/utils/errorHandler";
+
 const api = axios.create({
-  baseURL: "http://localhost:3443/api/",
-  timeout: 5000,
+  baseURL: API_CONFIG.BASE_URL,
+  timeout: API_CONFIG.TIMEOUT,
 });
+
 // Interceptor để thêm token vào mỗi request
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("tokenTodo");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-// Interceptor để xử lý lỗi response (vd: token hết hạn)
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.log(error.response.status);
-    if (error.response && error.response.status === 401) {
-      localStorage.removeItem("tokenTodo");
-      alert("Token đã hết hạn, hãy đăng nhập lại");
-      router.push("/login");
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
+  },
+  (error) => {
+    logError('API Request', error);
     return Promise.reject(error);
   }
 );
+
+// Interceptor để xử lý lỗi response
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    logError('API Response', error);
+    
+    if (error.response?.status === 401) {
+      localStorage.removeItem(STORAGE_KEYS.TOKEN);
+      
+      // Chỉ hiển thị thông báo nếu không phải trang login
+      if (router.currentRoute.value.path !== '/login') {
+        // Thay alert bằng notification system tốt hơn
+        console.warn(ERROR_MESSAGES.UNAUTHORIZED);
+        router.push("/login");
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * Tạo URL cho static files
+ * @param {string} path - Đường dẫn file
+ * @returns {string} - URL đầy đủ
+ */
 export const getStaticUrl = (path) => {
   if (!path) return "";
-  return `http://localhost:3443${path}`;
+  return `${API_CONFIG.STATIC_URL}${path}`;
 };
+
 export default api;

@@ -1,22 +1,45 @@
 // src/composables/useImageUpload.js
-import { ref } from "vue";
+import { ref, onUnmounted } from "vue";
 import Pica from "pica";
+import { TODO_CONSTANTS, ERROR_MESSAGES } from "@/constants";
+import { logError } from "@/utils/errorHandler";
 
 export function useImageUpload() {
   const imageFile = ref(null);
   const imagePreview = ref(null);
   const isProcessing = ref(false);
   const pica = new Pica();
+  
+  // Track created URLs for cleanup
+  const createdUrls = new Set();
 
-  // Reset tất cả state
+  // Reset tất cả state và cleanup URLs
   const resetImage = () => {
+    cleanup();
     imageFile.value = null;
     imagePreview.value = null;
     isProcessing.value = false;
   };
 
-  // Tự động resize ảnh để không vượt quá 1MB
-  const resizeImageToTargetSize = async (file, maxSizeInMB = 1) => {
+  // Cleanup URLs to prevent memory leaks
+  const cleanup = () => {
+    createdUrls.forEach(url => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        logError('URL cleanup', error);
+      }
+    });
+    createdUrls.clear();
+  };
+
+  // Auto cleanup on component unmount
+  onUnmounted(() => {
+    cleanup();
+  });
+
+  // Tự động resize ảnh để không vượt quá maxSizeInMB
+  const resizeImageToTargetSize = async (file, maxSizeInMB = TODO_CONSTANTS.IMAGE_MAX_SIZE_MB) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
 
@@ -142,7 +165,7 @@ export function useImageUpload() {
     });
   };
 
-  // Xử lý khi chọn file
+  // Xử lý khi chọn file với improved error handling
   const handleFileSelect = async (file) => {
     if (!file) {
       resetImage();
@@ -151,19 +174,25 @@ export function useImageUpload() {
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      throw new Error("Vui lòng chọn file ảnh hợp lệ");
+      throw new Error(ERROR_MESSAGES.IMAGE_FORMAT_ERROR);
     }
 
-    // Không giới hạn file size ban đầu, sẽ tự động resize
-    console.log(
-      `File gốc: ${file.name}, size: ${(file.size / 1024 / 1024).toFixed(2)}MB`
-    );
+    // Log file info
+    if (import.meta.env.VITE_DEBUG === 'true') {
+      console.log(`File gốc: ${file.name}, size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+    }
 
     isProcessing.value = true;
 
     try {
-      // Tự động resize ảnh về tối đa 1MB
-      const resizedBlob = await resizeImageToTargetSize(file, 1);
+      // Cleanup previous preview URL
+      if (imagePreview.value) {
+        URL.revokeObjectURL(imagePreview.value);
+        createdUrls.delete(imagePreview.value);
+      }
+
+      // Tự động resize ảnh
+      const resizedBlob = await resizeImageToTargetSize(file, TODO_CONSTANTS.IMAGE_MAX_SIZE_MB);
 
       // Tạo File object từ blob
       const resizedFile = new File([resizedBlob], file.name, {
@@ -171,26 +200,24 @@ export function useImageUpload() {
         lastModified: Date.now(),
       });
 
-      imageFile.value = resizedFile;
-      imagePreview.value = URL.createObjectURL(resizedBlob);
+      // Tạo preview URL và track nó
+      const previewUrl = URL.createObjectURL(resizedBlob);
+      createdUrls.add(previewUrl);
 
-      console.log(
-        `File sau resize: ${(resizedFile.size / 1024 / 1024).toFixed(2)}MB`
-      );
+      imageFile.value = resizedFile;
+      imagePreview.value = previewUrl;
+
+      if (import.meta.env.VITE_DEBUG === 'true') {
+        console.log(`File sau resize: ${(resizedFile.size / 1024 / 1024).toFixed(2)}MB`);
+      }
+
     } catch (error) {
+      logError('handleFileSelect', error);
       resetImage();
       throw error;
     } finally {
       isProcessing.value = false;
     }
-  };
-
-  // Cleanup preview URL khi component unmount
-  const cleanup = () => {
-    if (imagePreview.value) {
-      URL.revokeObjectURL(imagePreview.value);
-    }
-    resetImage();
   };
 
   return {

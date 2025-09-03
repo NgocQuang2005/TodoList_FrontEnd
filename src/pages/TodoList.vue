@@ -136,7 +136,7 @@
         :value="filteredTodos"
         :paginator="true"
         :rows="pagination.pageSize"
-        :rowsPerPageOptions="[5, 10, 20]"
+        :rowsPerPageOptions="PAGE_SIZE_OPTIONS"
         :totalRecords="pagination.total"
         :first="(pagination.page - 1) * pagination.pageSize"
         :lazy="true"
@@ -330,11 +330,7 @@
             <strong>Trạng thái:</strong>
             {{ history.is_completed ? "Hoàn thành" : "Chưa hoàn thành" }}
           </p>
-          <p class="text-sm">
-            <strong>Ảnh:</strong>
-            <img v-if="history.image_url" class="w-[60px]" :src="getStaticUrl(history.image_url)" alt="ảnh todo">
-            <p v-else>Chưa có ảnh</p>
-          </p>
+          
         </div>
       </div>
       <div v-else class="text-center py-6 text-gray-500">
@@ -351,12 +347,21 @@ import { useTodoStore } from "@/stores/todoStore";
 import { useTodoForm } from "@/composables/useTodoForm";
 import { useTodoFilter } from "@/composables/useTodoFilter";
 import { getPriorityLabel, getStatusLabel } from "@/utils/todoUtils";
+import { 
+  PRIORITY_OPTIONS, 
+  STATUS_OPTIONS, 
+  PRIORITY_FILTER_OPTIONS,
+  PAGE_SIZE_OPTIONS,
+  ERROR_MESSAGES,
+  TODO_CONSTANTS
+} from "@/constants";
 import TodoItem from "@/components/TodoItem.vue";
 import ImageUpload from "@/components/ImageUpload.vue";
-import { getStaticUrl } from "@/services/api";
+
 // Store
 const todoStore = useTodoStore();
 const { todos, pagination, loading } = storeToRefs(todoStore);
+
 // Form
 const {
   showDialog,
@@ -365,6 +370,7 @@ const {
   formErrors,
   selectedImageFile,
   showHistoryDialog,
+  isSubmitting,
   openAddDialog,
   startEdit,
   cancelDialog,
@@ -372,6 +378,7 @@ const {
   handleImageSelect,
   openHistoryDialog,
 } = useTodoForm();
+
 // Filter
 const {
   searchFilters,
@@ -381,42 +388,58 @@ const {
   resetFilters,
   clearFilter,
 } = useTodoFilter(todos, todoStore);
-// Options
-const priorityOptions = [
-  { label: "Dễ", value: "low" },
-  { label: "Vừa", value: "medium" },
-  { label: "Khó", value: "high" },
-];
-const statusOptions = [
-  { label: "Tất cả", value: "all" },
-  { label: "Hoàn thành", value: true },
-  { label: "Chưa hoàn thành", value: false },
-];
-const priorityFilterOptions = [
-  { label: "Tất cả", value: "all" },
-  ...priorityOptions,
-];
+
+// Options từ constants
+const priorityOptions = PRIORITY_OPTIONS;
+const statusOptions = STATUS_OPTIONS;
+const priorityFilterOptions = PRIORITY_FILTER_OPTIONS;
+/**
+ * Xử lý chuyển trang
+ */
 async function onPageChange(event) {
   const page = event.first / event.rows + 1;
   const pageSize = event.rows;
   await todoStore.getTodos(page, pageSize, todoStore.currentFilters);
 }
 
+/**
+ * Xử lý thay đổi số item mỗi trang
+ */
 async function onRowsPerPageChange(event) {
   await todoStore.changePageSize(event.rows);
 }
 
-onMounted(() => {
-  todoStore.getTodos(1, 5);
-});
+/**
+ * Xử lý xóa todo với confirmation
+ */
 async function onDelete(id) {
-  if (confirm("Bạn có chắc muốn xóa công việc này?")) {
-    await todoStore.deleteTodoItem(id);
+  if (confirm(ERROR_MESSAGES.DELETE_CONFIRM)) {
+    const result = await todoStore.deleteTodoItem(id);
+    if (!result.success) {
+      // Có thể hiển thị toast error ở đây
+      console.error('Delete failed:', result.error);
+    }
   }
 }
+
+/**
+ * Toggle trạng thái hoàn thành
+ */
 async function toggleCompleted(todo) {
-  await todoStore.updateTodoItem(todo.id, { is_completed: !todo.is_completed });
+  const result = await todoStore.updateTodoItem(todo.id, { 
+    is_completed: !todo.is_completed 
+  });
+  
+  if (!result.success) {
+    // Có thể hiển thị toast error ở đây
+    console.error('Toggle completed failed:', result.error);
+  }
 }
+
+// Khởi tạo dữ liệu khi component mount
+onMounted(() => {
+  todoStore.getTodos(1, TODO_CONSTANTS.DEFAULT_PAGE_SIZE);
+});
 </script>
 
 <style>
