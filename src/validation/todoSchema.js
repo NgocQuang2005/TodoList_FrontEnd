@@ -22,12 +22,17 @@ const todoSchema = {
       enum: VALIDATION_RULES.PRIORITY.ALLOWED_VALUES 
     },
     deadline: { 
-      type: "string", 
-      format: "date-time" 
+      anyOf: [
+        { type: "string", format: "date-time" },
+        { type: "null" }
+      ]
     },
+    image_url: {
+      type: "string"
+    }
   },
   required: ["title", "description"],
-  additionalProperties: false,
+  additionalProperties: true, // Cho phép các properties khác
 };
 
 /**

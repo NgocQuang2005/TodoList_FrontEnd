@@ -1,81 +1,36 @@
 // src/composables/useTodoFilter.js
-import { ref, computed, watch } from "vue";
-import { debounce } from "@/utils/debounce";
+import { ref, computed } from "vue";
 import { TODO_CONSTANTS } from "@/constants";
 
 export function useTodoFilter(todos, todoStore) {
+  // Chỉ sử dụng một biến searchFilters duy nhất
   const searchFilters = ref({
     title: "",
     status: "all",
     priority: "all",
   });
 
-  // Debounced search function
-  const debouncedSearch = debounce(async () => {
-    await applyFilters();
-  }, TODO_CONSTANTS.DEBOUNCE_DELAY);
-
-  // Watch for title changes and apply debounced search
-  watch(
-    () => searchFilters.value.title,
-    () => {
-      if (searchFilters.value.title !== todoStore.currentFilters.title) {
-        debouncedSearch();
-      }
-    }
-  );
-
-  // Watch for immediate filter changes (status, priority)
-  watch(
-    [() => searchFilters.value.status, () => searchFilters.value.priority],
-    () => {
-      applyFilters();
-    }
-  );
-
   /**
-   * Computed property ��ể check có filter active không
+   * Computed property để check có filter active không (dựa trên store.currentFilters)
    */
   const hasActiveFilters = computed(() => {
+    const currentFilters = todoStore.currentFilters || {};
     return (
-      (searchFilters.value.title && searchFilters.value.title.trim()) ||
-      (searchFilters.value.status !== "all" && searchFilters.value.status !== null) ||
-      (searchFilters.value.priority !== "all" && searchFilters.value.priority !== null)
+      (currentFilters.title && currentFilters.title.trim()) ||
+      (currentFilters.status !== null && currentFilters.status !== undefined) ||
+      (currentFilters.priority !== null && currentFilters.priority !== undefined)
     );
   });
 
   /**
-   * Computed property cho filtered todos (client-side filtering for immediate feedback)
+   * Computed property trả về todos từ server (không filter client-side)
    */
   const filteredTodos = computed(() => {
-    if (!todos.value || todos.value.length === 0) {
-      return [];
-    }
-
-    let filtered = [...todos.value];
-
-    // Client-side filtering for immediate feedback
-    if (searchFilters.value.title && searchFilters.value.title.trim()) {
-      const searchTerm = searchFilters.value.title.toLowerCase().trim();
-      filtered = filtered.filter(todo =>
-        todo.title?.toLowerCase().includes(searchTerm) ||
-        todo.description?.toLowerCase().includes(searchTerm)
-      );
-    }
-
-    if (searchFilters.value.status !== "all" && searchFilters.value.status !== null) {
-      filtered = filtered.filter(todo => todo.is_completed === searchFilters.value.status);
-    }
-
-    if (searchFilters.value.priority !== "all" && searchFilters.value.priority !== null) {
-      filtered = filtered.filter(todo => todo.priority === searchFilters.value.priority);
-    }
-
-    return filtered;
+    return todos.value || [];
   });
 
   /**
-   * Apply filters - gọi API với filters mới
+   * Apply filters - CHỈ gọi khi nhấn nút tìm kiếm
    */
   async function applyFilters() {
     const filters = {
@@ -84,6 +39,7 @@ export function useTodoFilter(todos, todoStore) {
       priority: searchFilters.value.priority === "all" ? null : searchFilters.value.priority,
     };
 
+    // Gọi API
     await todoStore.getTodos(1, todoStore.pagination.pageSize, filters);
   }
 
@@ -101,7 +57,7 @@ export function useTodoFilter(todos, todoStore) {
   }
 
   /**
-   * Clear một filter cụ thể
+   * Clear một filter cụ thể và apply ngay
    */
   async function clearFilter(filterName) {
     switch (filterName) {
@@ -141,6 +97,21 @@ export function useTodoFilter(todos, todoStore) {
     };
   }
 
+  /**
+   * Sync search filters với current filters từ store
+   */
+  function syncWithStore() {
+    const currentFilters = todoStore.currentFilters || {};
+    
+    searchFilters.value = {
+      title: currentFilters.title || "",
+      status: currentFilters.status !== null && currentFilters.status !== undefined 
+        ? currentFilters.status 
+        : "all",
+      priority: currentFilters.priority || "all",
+    };
+  }
+
   return {
     searchFilters,
     filteredTodos,
@@ -150,5 +121,6 @@ export function useTodoFilter(todos, todoStore) {
     clearFilter,
     setFilters,
     getCurrentFilters,
+    syncWithStore,
   };
 }

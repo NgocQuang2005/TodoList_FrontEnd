@@ -126,10 +126,9 @@
         </span>
       </div>
     </div>
-    <div v-if="loading" class="text-center py-8">
-      <i class="pi pi-spin pi-spinner text-4xl text-blue-500 mb-4"></i>
-      <p class="text-lg text-gray-600">Đang tải dữ liệu...</p>
-    </div>
+    <!-- Loading Skeleton -->
+    <LoadingSkeleton v-if="loading" type="todo-list" :rows="pagination.pageSize" />
+    
     <!-- Bảng dữ liệu -->
     <div v-else-if="filteredTodos.length > 0">
       <DataTable
@@ -291,8 +290,15 @@
             label="Hủy"
             class="p-button-secondary"
             @click="cancelDialog"
+            :disabled="isSubmitting"
           />
-          <Button label="Lưu" class="p-button-success" @click="saveTodo" />
+          <Button 
+            :label="isSubmitting ? 'Đang lưu...' : 'Lưu'" 
+            class="p-button-success" 
+            @click="saveTodo"
+            :disabled="isSubmitting"
+            :loading="isSubmitting"
+          />
         </div>
       </div>
     </Dialog>
@@ -304,10 +310,9 @@
       modal
       :style="{ width: '600px' }"
     >
-      <div v-if="todoStore.historyLoading" class="text-center py-6">
-        <i class="pi pi-spin pi-spinner text-3xl text-blue-500"></i>
-        <p class="mt-2">Đang tải lịch sử...</p>
-      </div>
+      <!-- Loading Skeleton for History -->
+      <LoadingSkeleton v-if="todoStore.historyLoading" type="todo-history" />
+      
       <div v-else-if="todoStore.todoHistory.length > 0" class="space-y-3">
         <div
           v-for="(history, index) in todoStore.todoHistory"
@@ -355,8 +360,10 @@ import {
   ERROR_MESSAGES,
   TODO_CONSTANTS
 } from "@/constants";
+import { useToast } from "@/composables/useToast";
 import TodoItem from "@/components/TodoItem.vue";
 import ImageUpload from "@/components/ImageUpload.vue";
+import LoadingSkeleton from "@/components/LoadingSkeleton.vue";
 
 // Store
 const todoStore = useTodoStore();
@@ -382,17 +389,24 @@ const {
 // Filter
 const {
   searchFilters,
+  appliedFilters,
   filteredTodos,
   hasActiveFilters,
+  hasUnappliedChanges,
   applyFilters,
   resetFilters,
   clearFilter,
+  syncWithStore,
 } = useTodoFilter(todos, todoStore);
+
+// Toast
+const { todoDeleted, todoCompleted, showError, confirmDelete } = useToast();
 
 // Options từ constants
 const priorityOptions = PRIORITY_OPTIONS;
 const statusOptions = STATUS_OPTIONS;
 const priorityFilterOptions = PRIORITY_FILTER_OPTIONS;
+
 /**
  * Xử lý chuyển trang
  */
@@ -410,29 +424,34 @@ async function onRowsPerPageChange(event) {
 }
 
 /**
- * Xử lý xóa todo với confirmation
+ * Xử lý xóa todo với toast confirmation
  */
 async function onDelete(id) {
+  // Sử dụng confirm dialog thay vì alert
   if (confirm(ERROR_MESSAGES.DELETE_CONFIRM)) {
     const result = await todoStore.deleteTodoItem(id);
-    if (!result.success) {
-      // Có thể hiển thị toast error ở đây
-      console.error('Delete failed:', result.error);
+    if (result.success) {
+      todoDeleted();
+    } else {
+      showError('Không thể xóa!', result.error || 'Có lỗi xảy ra khi xóa todo');
     }
   }
 }
 
 /**
- * Toggle trạng thái hoàn thành
+ * Toggle trạng thái hoàn th��nh với toast feedback
  */
 async function toggleCompleted(todo) {
   const result = await todoStore.updateTodoItem(todo.id, { 
     is_completed: !todo.is_completed 
   });
   
-  if (!result.success) {
-    // Có thể hiển thị toast error ở đây
-    console.error('Toggle completed failed:', result.error);
+  if (result.success) {
+    if (!todo.is_completed) {
+      todoCompleted();
+    }
+  } else {
+    showError('Không thể cập nhật!', result.error || 'Có lỗi xảy ra khi cập nhật trạng thái');
   }
 }
 

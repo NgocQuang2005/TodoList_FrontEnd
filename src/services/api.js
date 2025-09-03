@@ -34,8 +34,12 @@ api.interceptors.response.use(
       
       // Chỉ hiển thị thông báo nếu không phải trang login
       if (router.currentRoute.value.path !== '/login') {
-        // Thay alert bằng notification system tốt hơn
-        console.warn(ERROR_MESSAGES.UNAUTHORIZED);
+        // Import toast dynamically để tránh circular dependency
+        import('@/composables/useToast').then(({ useToast }) => {
+          const { unauthorized } = useToast();
+          unauthorized();
+        });
+        
         router.push("/login");
       }
     }

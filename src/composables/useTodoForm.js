@@ -2,9 +2,11 @@ import { ref } from "vue";
 import { useTodoStore } from "@/stores/todoStore";
 import { validateTodo } from "@/validation/todoSchema";
 import { TODO_CONSTANTS, SUCCESS_MESSAGES, ERROR_MESSAGES } from "@/constants";
+import { useToast } from "@/composables/useToast";
 
 export function useTodoForm() {
   const todoStore = useTodoStore();
+  const { todoAdded, todoUpdated, showError, showSuccess } = useToast();
   const showDialog = ref(false);
   const editingTodo = ref(null);
   const selectedImageFile = ref(null);
@@ -110,8 +112,15 @@ export function useTodoForm() {
         payload.image_url = editingTodo.value.image_url;
       }
 
+      // Debug logging
+      console.log('Payload to validate:', payload);
+      console.log('EditingTodo:', editingTodo.value);
+      console.log('SelectedImageFile:', selectedImageFile.value);
+
       // Validate trước khi gửi
       const errors = validateTodo(payload);
+      console.log('Validation errors:', errors);
+      
       if (Object.keys(errors).length > 0) {
         Object.entries(errors).forEach(([key, msg]) => {
           formErrors.value[key] = msg;
@@ -121,34 +130,49 @@ export function useTodoForm() {
 
       let result;
       if (editingTodo.value) {
+        console.log('Updating todo with ID:', editingTodo.value.id);
         result = await todoStore.updateTodoItem(
           editingTodo.value.id,
           payload,
           selectedImageFile.value
         );
       } else {
+        console.log('Adding new todo');
         result = await todoStore.addNewTodo(payload, selectedImageFile.value);
       }
+      
+      console.log('Store result:', result);
 
       // Kiểm tra kết quả và đóng dialog nếu thành công
-      if (result.success) {
+      if (result && result.success) {
         showDialog.value = false;
         selectedImageFile.value = null;
         
-        // Hiển thị thông báo thành công (có thể thêm toast notification)
-        console.log(editingTodo.value ? SUCCESS_MESSAGES.TODO_UPDATED : SUCCESS_MESSAGES.TODO_ADDED);
+        // Hiển thị toast thành công
+        if (editingTodo.value) {
+          todoUpdated();
+        } else {
+          todoAdded();
+        }
       } else {
         // Xử lý lỗi từ store
-        if (result.errors) {
+        if (result && result.errors) {
           Object.entries(result.errors).forEach(([key, msg]) => {
             formErrors.value[key] = msg;
           });
+        }
+        
+        if (result && result.error) {
+          showError('Có lỗi xảy ra!', result.error);
+        } else {
+          // Fallback error nếu không có result hoặc result không có error
+          showError('Có lỗi xảy ra!', 'Không thể lưu dữ liệu. Vui lòng thử lại.');
         }
       }
 
     } catch (error) {
       console.error("Error saving todo:", error);
-      // Có thể hiển thị toast error ở đây
+      showError('Có lỗi xảy ra!', 'Vui lòng thử lại sau');
     } finally {
       isSubmitting.value = false;
     }

@@ -67,7 +67,7 @@ export const SUCCESS_MESSAGES = {
   TODO_ADDED: 'Thêm công việc thành công!',
   TODO_UPDATED: 'Cập nhật công việc thành công!',
   TODO_DELETED: 'Xóa công việc thành công!',
-  TODO_COMPLETED: 'Đánh dấu hoàn thành thành công!'
+  TODO_COMPLETED: 'Cập nhật trạng thái thành công!'
 };
 
 // Loading Messages

@@ -74,6 +74,24 @@
   - Reusable composables
   - Documented functions
 
+### 🎨 **UI/UX Improvements:**
+
+#### 10. **Toast Notifications** ✅
+- **Vấn đề**: Sử dụng alert() và console.log cho feedback
+- **Giải pháp**:
+  - Implement PrimeVue Toast system
+  - Centralized toast composable
+  - Predefined toast messages
+  - Better user feedback
+
+#### 11. **Loading Skeletons** ✅
+- **Vấn đề**: Loading spinner đơn giản, UX kém
+- **Giải pháp**:
+  - Realistic skeleton loading
+  - Multiple skeleton types (list, form, history)
+  - Better perceived performance
+  - Smooth loading transitions
+
 ## 📁 Cấu trúc file mới
 
 ```
@@ -150,9 +168,9 @@ npm run dev
 
 ## 🎯 Khuyến nghị tiếp theo
 
-### Immediate (Có thể làm ngay)
-1. **Toast Notifications** - Thay thế console.log/alert
-2. **Loading Skeletons** - Better loading UX
+### ✅ Completed (Đã hoàn thành)
+1. **Toast Notifications** - ✅ Đã thay thế alert/console.log
+2. **Loading Skeletons** - ✅ Đã thêm skeleton loading
 3. **Keyboard Shortcuts** - Power user features
 
 ### Short-term (1-2 tuần)

@@ -22,6 +22,12 @@ import Calendar from "primevue/calendar";
 import Textarea from "primevue/textarea";
 import Avatar from "primevue/avatar";
 import Tooltip from 'primevue/tooltip';
+import Toast from 'primevue/toast';
+import Skeleton from 'primevue/skeleton';
+import ProgressSpinner from 'primevue/progressspinner';
+
+// Services
+import ToastService from 'primevue/toastservice';
 // CSS
 import 'primeicons/primeicons.css'; // Icons
 import 'primeflex/primeflex.css';   // Layout utilities
@@ -35,6 +41,7 @@ app.use(PrimeVue, {
     preset: Aura,
   },
 });
+app.use(ToastService);
 
 // Global components
 app.component('Button', Button);
@@ -50,5 +57,8 @@ app.component("Calendar", Calendar);
 app.component("Textarea", Textarea);
 app.component("Avatar", Avatar);
 app.component("Tooltip", Tooltip);
+app.component("Toast", Toast);
+app.component("Skeleton", Skeleton);
+app.component("ProgressSpinner", ProgressSpinner);
 
 app.mount('#app');

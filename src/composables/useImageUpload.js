@@ -3,8 +3,10 @@ import { ref, onUnmounted } from "vue";
 import Pica from "pica";
 import { TODO_CONSTANTS, ERROR_MESSAGES } from "@/constants";
 import { logError } from "@/utils/errorHandler";
+import { useToast } from "@/composables/useToast";
 
 export function useImageUpload() {
+  const { imageFormatError, imageSizeError, showError } = useToast();
   const imageFile = ref(null);
   const imagePreview = ref(null);
   const isProcessing = ref(false);
