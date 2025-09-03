@@ -22,6 +22,7 @@
             v-model="searchFilters.title"
             placeholder="Nhập tiêu đề..."
             class="w-full"
+            @keyup.enter="applyFilters"
           />
         </div>
 
@@ -75,10 +76,13 @@
       >
         <span class="text-xs text-gray-500">Đang lọc:</span>
         <span
-          v-if="appliedFilters.title"
+          v-if="
+            todoStore.currentFilters.title &&
+            todoStore.currentFilters.title.trim()
+          "
           class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
         >
-          "{{ appliedFilters.title }}"
+          "{{ todoStore.currentFilters.title }}"
           <button
             @click="clearFilter('title')"
             class="ml-1 hover:text-blue-600"
@@ -87,10 +91,14 @@
           </button>
         </span>
         <span
-          v-if="appliedFilters.status !== null"
+          v-if="
+            todoStore.currentFilters.status !== null &&
+            todoStore.currentFilters.status !== undefined &&
+            todoStore.currentFilters.status !== 'all'
+          "
           class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full"
         >
-          {{ getStatusLabel(appliedFilters.status, statusOptions) }}
+          {{ getStatusLabel(todoStore.currentFilters.status, statusOptions) }}
           <button
             @click="clearFilter('status')"
             class="ml-1 hover:text-green-600"
@@ -99,10 +107,16 @@
           </button>
         </span>
         <span
-          v-if="appliedFilters.priority !== null"
+          v-if="
+            todoStore.currentFilters.priority !== null &&
+            todoStore.currentFilters.priority !== undefined &&
+            todoStore.currentFilters.priority !== 'all'
+          "
           class="inline-flex items-center px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full"
         >
-          {{ getPriorityLabel(appliedFilters.priority, priorityOptions) }}
+          {{
+            getPriorityLabel(todoStore.currentFilters.priority, priorityOptions)
+          }}
           <button
             @click="clearFilter('priority')"
             class="ml-1 hover:text-orange-600"
@@ -112,14 +126,22 @@
         </span>
       </div>
     </div>
-
+    <div v-if="loading" class="text-center py-8">
+      <i class="pi pi-spin pi-spinner text-4xl text-blue-500 mb-4"></i>
+      <p class="text-lg text-gray-600">Đang tải dữ liệu...</p>
+    </div>
     <!-- Bảng dữ liệu -->
-    <div v-if="filteredTodos.length > 0">
+    <div v-else-if="filteredTodos.length > 0">
       <DataTable
         :value="filteredTodos"
         :paginator="true"
-        :rows="5"
+        :rows="pagination.pageSize"
         :rowsPerPageOptions="[5, 10, 20]"
+        :totalRecords="pagination.total"
+        :first="(pagination.page - 1) * pagination.pageSize"
+        :lazy="true"
+        @page="onPageChange"
+        @rowsPerPageChange="onRowsPerPageChange"
         class="p-datatable-striped"
         responsiveLayout="scroll"
       >
@@ -187,7 +209,16 @@
       :closable="false"
       :style="{ width: '600px' }"
     >
-      <div class="flex flex-col gap-5">
+      <div class="flex justify-end">
+        <Button
+          v-if="editingTodo"
+          label="Lịch sử cập nhật"
+          icon="pi pi-history"
+          class="p-button-info"
+          @click="openHistoryDialog(editingTodo.id)"
+        />
+      </div>
+      <div class="flex flex-col gap-5 mt-2">
         <div class="flex flex-col gap-2">
           <label class="font-medium">
             Tiêu đề <span class="text-red-600 ml-0.5">*</span>
@@ -250,7 +281,11 @@
             {{ formErrors.deadline }}
           </span>
         </div>
-
+        <ImageUpload
+          v-model="selectedImageFile"
+          :existing-image-url="editingTodo?.image_url"
+          @update:modelValue="handleImageSelect"
+        />
         <div class="flex justify-end gap-3 mt-4">
           <Button
             label="Hủy"
@@ -259,6 +294,51 @@
           />
           <Button label="Lưu" class="p-button-success" @click="saveTodo" />
         </div>
+      </div>
+    </Dialog>
+    <!-- history -->
+    <!-- Dialog lịch sử -->
+    <Dialog
+      header="Lịch sử cập nhật"
+      v-model:visible="showHistoryDialog"
+      modal
+      :style="{ width: '600px' }"
+    >
+      <div v-if="todoStore.historyLoading" class="text-center py-6">
+        <i class="pi pi-spin pi-spinner text-3xl text-blue-500"></i>
+        <p class="mt-2">Đang tải lịch sử...</p>
+      </div>
+      <div v-else-if="todoStore.todoHistory.length > 0" class="space-y-3">
+        <div
+          v-for="(history, index) in todoStore.todoHistory"
+          :key="index"
+          class="p-3 border rounded-lg bg-gray-50"
+        >
+          <p class="text-sm text-gray-600">
+            <strong>Ngày cập nhật:</strong>
+            {{ new Date(history.updated_at).toLocaleString() }}
+          </p>
+          <p class="text-sm"><strong>Tiêu đề:</strong> {{ history.title }}</p>
+          <p class="text-sm">
+            <strong>Mô tả:</strong> {{ history.description }}
+          </p>
+          <p class="text-sm">
+            <strong>Ưu tiên:</strong>
+            {{ getPriorityLabel(history.priority, priorityOptions) }}
+          </p>
+          <p class="text-sm">
+            <strong>Trạng thái:</strong>
+            {{ history.is_completed ? "Hoàn thành" : "Chưa hoàn thành" }}
+          </p>
+          <p class="text-sm">
+            <strong>Ảnh:</strong>
+            <img v-if="history.image_url" class="w-[60px]" :src="getStaticUrl(history.image_url)" alt="ảnh todo">
+            <p v-else>Chưa có ảnh</p>
+          </p>
+        </div>
+      </div>
+      <div v-else class="text-center py-6 text-gray-500">
+        Không có lịch sử nào cho todo này.
       </div>
     </Dialog>
   </div>
@@ -272,30 +352,35 @@ import { useTodoForm } from "@/composables/useTodoForm";
 import { useTodoFilter } from "@/composables/useTodoFilter";
 import { getPriorityLabel, getStatusLabel } from "@/utils/todoUtils";
 import TodoItem from "@/components/TodoItem.vue";
+import ImageUpload from "@/components/ImageUpload.vue";
+import { getStaticUrl } from "@/services/api";
 // Store
 const todoStore = useTodoStore();
-const { todos } = storeToRefs(todoStore);
+const { todos, pagination, loading } = storeToRefs(todoStore);
 // Form
 const {
   showDialog,
   editingTodo,
   form,
   formErrors,
+  selectedImageFile,
+  showHistoryDialog,
   openAddDialog,
   startEdit,
   cancelDialog,
   saveTodo,
+  handleImageSelect,
+  openHistoryDialog,
 } = useTodoForm();
 // Filter
 const {
   searchFilters,
-  appliedFilters,
   filteredTodos,
   hasActiveFilters,
   applyFilters,
   resetFilters,
   clearFilter,
-} = useTodoFilter(todos);
+} = useTodoFilter(todos, todoStore);
 // Options
 const priorityOptions = [
   { label: "Dễ", value: "low" },
@@ -303,17 +388,26 @@ const priorityOptions = [
   { label: "Khó", value: "high" },
 ];
 const statusOptions = [
-  { label: "Tất cả", value: null },
+  { label: "Tất cả", value: "all" },
   { label: "Hoàn thành", value: true },
   { label: "Chưa hoàn thành", value: false },
-  { label: "Quá hạn", value: "overdue" },
 ];
 const priorityFilterOptions = [
-  { label: "Tất cả", value: null },
+  { label: "Tất cả", value: "all" },
   ...priorityOptions,
 ];
+async function onPageChange(event) {
+  const page = event.first / event.rows + 1;
+  const pageSize = event.rows;
+  await todoStore.getTodos(page, pageSize, todoStore.currentFilters);
+}
+
+async function onRowsPerPageChange(event) {
+  await todoStore.changePageSize(event.rows);
+}
+
 onMounted(() => {
-  todoStore.getTodos();
+  todoStore.getTodos(1, 5);
 });
 async function onDelete(id) {
   if (confirm("Bạn có chắc muốn xóa công việc này?")) {
@@ -321,10 +415,7 @@ async function onDelete(id) {
   }
 }
 async function toggleCompleted(todo) {
-  await todoStore.updateTodoItem(todo.id, {
-    ...todo,
-    is_completed: todo.is_completed,
-  });
+  await todoStore.updateTodoItem(todo.id, { is_completed: !todo.is_completed });
 }
 </script>
 

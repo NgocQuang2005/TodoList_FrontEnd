@@ -4,98 +4,124 @@ import { validateTodo } from "@/validation/todoSchema";
 
 export function useTodoForm() {
   const todoStore = useTodoStore();
-  // ✅ Trạng thái hiển thị dialog (true/false)
-  // => Dùng để mở form "Thêm / Sửa Todo"
   const showDialog = ref(false);
-  // ✅ Lưu todo đang được chỉnh sửa (nếu có)
-  // => Nếu null thì nghĩa là đang thêm mới
   const editingTodo = ref(null);
-  // ✅ Dữ liệu form Todo
-  // => Khi thêm mới sẽ rỗng, khi sửa sẽ gán dữ liệu từ todo
+  const selectedImageFile = ref(null);
+  const showHistoryDialog = ref(false);
   const form = ref({
     title: "",
     description: "",
     priority: "medium",
     deadline: null,
   });
-  // ✅ Lưu lỗi validate form
-  // => Nếu validateTodo() trả về lỗi thì hiển thị ở dialog
   const formErrors = ref({
     title: "",
     description: "",
     priority: "",
     deadline: "",
   });
-  // ✅ Mở dialog để thêm mới Todo
-  // => Reset lại form và editingTodo
   function openAddDialog() {
     editingTodo.value = null;
+    selectedImageFile.value = null;
     form.value = {
       title: "",
       description: "",
       priority: "medium",
       deadline: null,
     };
+    clearFormErrors();
     showDialog.value = true;
   }
-  // ✅ Bắt đầu sửa một Todo
-  // => Gán dữ liệu todo đó vào form và lưu lại todo đang sửa
   function startEdit(todo) {
     editingTodo.value = todo;
-    form.value = { ...todo };
+    selectedImageFile.value = null;
+    form.value = {
+      title: todo.title || "",
+      description: todo.description || "",
+      priority: todo.priority || "medium",
+      deadline: todo.deadline ? new Date(todo.deadline) : null,
+    };
+    clearFormErrors();
     showDialog.value = true;
   }
-  // ✅ Đóng dialog (không lưu)
   function cancelDialog() {
     showDialog.value = false;
+    selectedImageFile.value = null;
+    clearFormErrors();
   }
-  // ✅ Lưu Todo (dùng cho cả thêm mới & chỉnh sửa)
-  // 1. Validate dữ liệu bằng validateTodo()
-  // 2. Nếu có lỗi => hiển thị dưới input
-  // 3. Nếu ok:
-  //    - Nếu đang sửa => gọi updateTodoItem
-  //    - Nếu thêm mới => gọi addNewTodo
-  async function saveTodo() {
-    const payload = {
-      ...form.value,
-      deadline: form.value.deadline
-        ? new Date(form.value.deadline).toISOString()
-        : null,
-    };
-    const errors = validateTodo(payload);
-    // Reset lỗi cũ
+  function clearFormErrors() {
     formErrors.value = {
       title: "",
       description: "",
       priority: "",
       deadline: "",
     };
-    // Nếu có lỗi => gán lỗi vào formErrors để hiển thị
+  }
+  function handleImageSelect(imageFile) {
+    selectedImageFile.value = imageFile;
+  }
+  async function saveTodo() {
+    const payload = {
+      title: form.value.title,
+      description: form.value.description,
+      priority: form.value.priority,
+      deadline: form.value.deadline
+        ? new Date(form.value.deadline).toISOString()
+        : null,
+    };
+    if (
+      editingTodo.value &&
+      editingTodo.value.image_url &&
+      !selectedImageFile.value
+    ) {
+      payload.image_url = editingTodo.value.image_url;
+    }
+    const errors = validateTodo(payload);
+    clearFormErrors();
     if (Object.keys(errors).length > 0) {
       Object.entries(errors).forEach(
         ([key, msg]) => (formErrors.value[key] = msg)
       );
       return;
     }
-    // Nếu đang sửa => gọi API update
-    if (editingTodo.value) {
-      await todoStore.updateTodoItem(editingTodo.value.id, payload);
-    } else {
-      // Nếu thêm mới => gọi API add
-      await todoStore.addNewTodo(payload);
+    try {
+      if (editingTodo.value) {
+        await todoStore.updateTodoItem(
+          editingTodo.value.id,
+          payload,
+          selectedImageFile.value
+        );
+      } else {
+        await todoStore.addNewTodo(payload, selectedImageFile.value);
+      }
+      // Refresh danh sách todos
+      await todoStore.getTodos(
+        todoStore.pagination.page,
+        todoStore.pagination.pageSize,
+        todoStore.currentFilters
+      );
+      showDialog.value = false;
+      selectedImageFile.value = null;
+    } catch (error) {
+      console.error("Error saving todo", error);
     }
-    // Sau khi lưu thì đóng dialog
-    showDialog.value = false;
   }
-  // ✅ Trả về các biến & hàm để sử dụng trong component
+  async function openHistoryDialog(todoId) {
+    await todoStore.fetchTodoHistory(todoId);
+    showHistoryDialog.value = true;
+  }
   return {
     showDialog,
     editingTodo,
     form,
     formErrors,
+    selectedImageFile,
+    showHistoryDialog,
     openAddDialog,
     startEdit,
     cancelDialog,
     saveTodo,
+    handleImageSelect,
+    openHistoryDialog
   };
 }

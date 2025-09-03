@@ -113,7 +113,11 @@ const password = ref("");
 const errors = ref({});
 
 async function onRegister() {
-  errors.value = validateRegister(username.value, password.value, email.value);
+  errors.value = validateRegister({
+    username: username.value,
+    password: password.value,
+    email: email.value,
+  });
 
   if (Object.keys(errors.value).length === 0) {
     try {

@@ -152,8 +152,8 @@ async function submitPassword() {
 .p-password{
   width: 100%;
 }
-.p-password input{
-  display: inline-block;
-  width: 100% !important;
+.p-password >>> input{
+  width: 100%;
+  color: red !important;
 }
 </style>

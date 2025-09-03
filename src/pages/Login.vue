@@ -104,7 +104,10 @@ const password = ref("");
 const errors = ref({});
 
 async function onLogin() {
-  errors.value = validateLogin(username.value, password.value);
+  errors.value = validateLogin({
+    username: username.value,
+    password: password.value,
+  });
 
   if (Object.keys(errors.value).length === 0) {
     try {

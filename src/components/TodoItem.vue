@@ -8,7 +8,7 @@
     :class="{ 'opacity-50 overdue-tooltip': isOverdue }"
     @change="onToggleCompleted"
   />
-  <span 
+  <span
     v-else-if="displayMode === 'title-only'"
     :class="{ 'opacity-50 overdue-tooltip': isOverdue }"
   >
@@ -16,7 +16,10 @@
   </span>
   <span
     v-else-if="displayMode === 'priority-only'"
-    :class="[getPriorityClass(localTodo.priority), { 'opacity-50 overdue-tooltip': isOverdue }]"
+    :class="[
+      getPriorityClass(localTodo.priority),
+      { 'opacity-50 overdue-tooltip': isOverdue },
+    ]"
   >
     {{ getPriorityLabel(localTodo.priority, priorityOptions) }}
   </span>
@@ -27,7 +30,7 @@
         localTodo.deadline &&
         new Date(localTodo.deadline) < new Date() &&
         !localTodo.is_completed,
-      'opacity-50 overdue-tooltip': isOverdue
+      'opacity-50 overdue-tooltip': isOverdue,
     }"
   >
     {{ formatDate(localTodo.deadline) }}
@@ -98,11 +101,17 @@ watch(
 
 //deadline hết hạn
 const isOverdue = computed(() => {
-  return localTodo.value.deadline && new Date(localTodo.value.deadline) < new Date() ;
+  return (
+    localTodo.value.deadline &&
+    new Date(localTodo.value.deadline) < new Date() &&
+    !localTodo.value.is_completed
+  );
 });
 
 function onToggleCompleted() {
   if (isOverdue.value) return; // Không cho phép thay đổi nếu hết hạn
+  // Cập nhật trạng thái completed
+  localTodo.value.is_completed = !localTodo.value.is_completed;
   emit("update", localTodo.value);
 }
 
@@ -131,7 +140,7 @@ function onDelete() {
 }
 
 .overdue-tooltip:hover::after {
-  content: 'Todo đã hết hạn';
+  content: "Todo đã hết hạn";
   position: absolute;
   top: -30px;
   left: 50%;
@@ -147,7 +156,7 @@ function onDelete() {
 }
 
 .overdue-tooltip:hover::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -6px;
   left: 50%;
